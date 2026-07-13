@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>لعبة السيارات ثلاثية الأبعاد</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; overflow: hidden;
+    background: #0a0e17;
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    height: 100%; width: 100%;
+  }
+  #gameCanvas { display: block; }
+
+  #hud {
+    position: fixed; top: 16px; right: 16px;
+    color: #fff; text-align: right;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    user-select: none; pointer-events: none;
+    z-index: 10;
+  }
+  #hud .score { font-size: 32px; font-weight: 800; letter-spacing: 1px; }
+  #hud .sub { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+  #speedWrap {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 120px; height: 120px; z-index: 10; pointer-events: none;
+  }
+  #speedNum {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; color: #fff;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  }
+  #speedNum .val { font-size: 30px; font-weight: 800; }
+  #speedNum .unit { font-size: 12px; opacity: 0.7; }
+
+  #startScreen, #gameOverScreen {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+    background: radial-gradient(ellipse at center, rgba(20,25,40,0.92), rgba(5,7,12,0.98));
+    color: #fff; text-align: center;
+  }
+  #startScreen h1, #gameOverScreen h1 {
+    font-size: 48px; margin: 0 0 8px; font-weight: 900;
+    background: linear-gradient(90deg, #ff5e62, #ff9966);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #startScreen p, #gameOverScreen p { font-size: 16px; opacity: 0.85; margin: 6px 0; }
+  .keys {
+    display: flex; gap: 10px; margin: 24px 0; direction: ltr;
+  }
+  .key {
+    width: 46px; height: 46px; border-radius: 10px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px;
+  }
+  button#startBtn, button#restartBtn {
+    margin-top: 22px; padding: 14px 40px; font-size: 18px; font-weight: 700;
+    border: none; border-radius: 999px; cursor: pointer;
+    background: linear-gradient(90deg, #ff5e62, #ff9966); color: #fff;
+    box-shadow: 0 8px 24px rgba(255,94,98,0.35);
+    transition: transform 0.15s ease;
+  }
+  button#startBtn:hover, button#restartBtn:hover { transform: scale(1.05); }
+  #gameOverScreen { display: none; }
+  #finalScore { font-size: 26px; font-weight: 800; color: #ff9966; margin: 10px 0 0; }
+
+  #mobileControls {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 15;
+    display: none; justify-content: space-between; padding: 18px; box-sizing: border-box;
+    pointer-events: none;
+  }
+  #mobileControls .side { display: flex; gap: 12px; pointer-events: auto; }
+  .mbtn {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; font-size: 26px; display: flex; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  @media (max-width: 820px) {
+    #mobileControls { display: flex; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="hud">
+  <div class="score" id="scoreVal">0</div>
+  <div class="sub">المسافة (متر)</div>
+</div>
+
+<div id="speedWrap">
+  <div id="speedNum"><span class="val" id="speedVal">0</span><span class="unit">كم/س</span></div>
+</div>
+
+<div id="startScreen">
+  <h1>🏎️ سباق الطريق</h1>
+  <p>تفادَ السيارات القادمة واجمع أكبر مسافة ممكنة</p>
+  <div class="keys">
+    <div class="key">◀</div><div class="key">▲</div><div class="key">▼</div><div class="key">▶</div>
+  </div>
+  <p>استخدم أسهم لوحة المفاتيح أو أزرار اللمس للتحكم</p>
+  <button id="startBtn">ابدأ اللعب</button>
+</div>
+
+<div id="gameOverScreen">
+  <h1>💥 اصطدام!</h1>
+  <p>لقد اصطدمت بسيارة أخرى</p>
+  <div id="finalScore">المسافة: 0 متر</div>
+  <button id="restartBtn">إعادة المحاولة</button>
+</div>
+
+<div id="mobileControls">
+  <div class="side">
+    <div class="mbtn" id="btnLeft">◀</div>
+    <div class="mbtn" id="btnRight">▶</div>
+  </div>
+  <div class="side">
+    <div class="mbtn" id="btnBrake">▼</div>
+    <div class="mbtn" id="btnGas">▲</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ... (المنطق الكامل موجود في الملف المُشارك أعلاه)
+</script>
+</body>
+</html>  
